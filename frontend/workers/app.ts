@@ -3,7 +3,7 @@ import { createRequestHandler } from "react-router";
 declare module "react-router" {
   export interface AppLoadContext {
     cloudflare: {
-      env: Env;
+      env: Env & { ANTHROPIC_API_KEY: string };
       ctx: ExecutionContext;
     };
   }
