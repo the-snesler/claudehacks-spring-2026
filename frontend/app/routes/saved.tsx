@@ -44,7 +44,12 @@ export default function Saved() {
 
   return (
     <div className="px-4 pt-6 pb-4">
-      <h1 className="text-xl font-bold text-gray-900 mb-4">Saved · {saved.length}</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-gray-900">Saved · {saved.length}</h1>
+        <button onClick={() => { setSavedIds([]); localStorage.removeItem("saved_events"); }} className="text-sm text-red-400 hover:text-red-600 font-medium">
+          Clear all
+        </button>
+      </div>
       <div className="space-y-3">
         {saved.map((event) => {
           const img = event.imageUrl || FALLBACK_IMAGES[event.title.length % 3];
@@ -55,7 +60,7 @@ export default function Saved() {
               <div className="flex-1 p-3 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">{event.title}</p>
-                  <button onClick={() => remove(event.id)} className="text-gray-300 hover:text-red-400 flex-shrink-0 mt-0.5">
+                  <button onClick={() => remove(event.id)} className="w-7 h-7 rounded-full bg-red-100 hover:bg-red-200 text-red-500 flex items-center justify-center flex-shrink-0 transition-colors">
                     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                       <path d="M6 18L18 6M6 6l12 12" />
                     </svg>
