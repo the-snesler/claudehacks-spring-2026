@@ -2,7 +2,6 @@ import {
   isRouteErrorResponse,
   Links,
   Meta,
-  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
@@ -10,6 +9,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import BottomNav from "./components/BottomNav";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -44,20 +44,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <>
-      <nav className="h-14 flex items-center justify-center gap-8 border-b border-gray-200 text-sm font-medium">
-        <NavLink to="/" end className={({ isActive }) => isActive ? "text-indigo-600" : "text-gray-500 hover:text-gray-800"}>
-          Discover
-        </NavLink>
-        <NavLink to="/saved" className={({ isActive }) => isActive ? "text-indigo-600" : "text-gray-500 hover:text-gray-800"}>
-          Saved
-        </NavLink>
-        <NavLink to="/chat" className={({ isActive }) => isActive ? "text-indigo-600" : "text-gray-500 hover:text-gray-800"}>
-          Chat
-        </NavLink>
-      </nav>
+    <div className="pb-16">
       <Outlet />
-    </>
+      <BottomNav />
+    </div>
   );
 }
 
