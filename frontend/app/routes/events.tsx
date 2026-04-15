@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useLoaderData } from 'react-router';
 import type { Route } from './+types/events';
 import { loadAllEvents } from '../models/loadEvents';
 import type { Event, SwipeDirection } from '../models/event';
 import SwipeCard from '../components/SwipeCard';
+import { addAiMessage } from '../models/aiMessages';
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: 'Madison Events' }];
@@ -13,19 +14,64 @@ export function loader(_: Route.LoaderArgs) {
   return { events: loadAllEvents() };
 }
 
+function randomBetween(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export default function EventsPage() {
   const { events } = useLoaderData<typeof loader>();
   const [stack, setStack] = useState<Event[]>(events);
+  const savedRef = useRef<Event[]>([]);
+  const nextTriggerRef = useRef<number>(randomBetween(5, 10));
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done'>('idle');
 
-  const handleSwipe = useCallback((id: string, _dir: SwipeDirection) => {
-    setStack(prev => prev.filter(e => e.id !== id));
+  const triggerAiSuggestion = useCallback(async (savedEvents: Event[]) => {
+    setAiStatus('loading');
+    try {
+      const res = await fetch('/api/suggest-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(savedEvents),
+      });
+      if (!res.ok) return;
+      const data: { selectedEventId: string; message: string } = await res.json();
+      const matchedEvent = savedEvents.find(e => e.id === data.selectedEventId);
+      if (matchedEvent) {
+        addAiMessage({
+          eventId: matchedEvent.id,
+          eventTitle: matchedEvent.title,
+          message: data.message,
+          timestamp: Date.now(),
+        });
+        setAiStatus('done');
+        setTimeout(() => setAiStatus('idle'), 3000);
+      }
+    } catch {
+      // silently fail — non-critical
+    }
   }, []);
+
+  const handleSwipe = useCallback((id: string, dir: SwipeDirection) => {
+    setStack(prev => prev.filter(e => e.id !== id));
+
+    if (dir === 'save') {
+      const event = events.find(e => e.id === id);
+      if (event) {
+        savedRef.current = [...savedRef.current, event];
+        if (savedRef.current.length >= nextTriggerRef.current) {
+          const snapshot = [...savedRef.current];
+          savedRef.current = [];
+          nextTriggerRef.current = randomBetween(5, 10);
+          triggerAiSuggestion(snapshot);
+        }
+      }
+    }
+  }, [events, triggerAiSuggestion]);
 
   const triggerSwipe = (dir: SwipeDirection) => {
     if (stack.length === 0) return;
-    setStack(prev => prev.slice(1));
-    // The button path skips the card animation — acceptable for accessibility
-    void dir;
+    const top = stack[0];
+    handleSwipe(top.id, dir);
   };
 
   if (stack.length === 0) {
@@ -40,12 +86,23 @@ export default function EventsPage() {
     );
   }
 
-  // Render top 3 cards; top card is last in render order (highest z-index)
   const visible = stack.slice(0, 3);
 
   return (
     <div className="flex flex-col items-center min-h-[calc(100vh-4rem)] pt-8 pb-4 gap-6">
       <h1 className="text-xl font-bold text-gray-900">Madison Events</h1>
+
+      {/* AI status toast */}
+      {aiStatus === 'loading' && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg animate-pulse">
+          Finding your best match...
+        </div>
+      )}
+      {aiStatus === 'done' && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg">
+          You have a new message! Check Chat
+        </div>
+      )}
 
       {/* Card stack */}
       <div className="relative w-80 h-[34rem]">

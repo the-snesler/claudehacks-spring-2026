@@ -1,6 +1,8 @@
 import { useLoaderData, useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
 import type { Route } from './+types/chat.$id';
 import { loadAllEvents } from '../models/loadEvents';
+import { getAiMessageForEvent, type AiMessage } from '../models/aiMessages';
 
 export function meta({ data }: Route.MetaArgs) {
   return [{ title: data?.event ? `${data.event.title} — Chat` : 'Chat' }];
@@ -21,6 +23,11 @@ const SOURCE_COLORS: Record<string, string> = {
 export default function ChatConversation() {
   const { event } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const [aiMsg, setAiMsg] = useState<AiMessage | undefined>(undefined);
+
+  useEffect(() => {
+    if (event) setAiMsg(getAiMessageForEvent(event.id));
+  }, [event?.id]);
 
   if (!event) {
     return (
@@ -32,7 +39,8 @@ export default function ChatConversation() {
 
   const avatarColor = SOURCE_COLORS[event.source] ?? 'bg-gray-400';
 
-  const messages = [
+  // Build message list: AI message first (if any), then static fallback messages
+  const staticMessages = [
     `Hey! We'd love to see you at ${event.title}.`,
     event.location
       ? `We're at ${event.location}${event.date ? ` on ${event.date}` : ''}.`
@@ -41,6 +49,14 @@ export default function ChatConversation() {
         : 'Check our page for the latest details.',
     'Any questions? Just reply here and we\'ll get back to you!',
   ];
+
+  type Msg = { text: string; isAi: boolean; time?: string };
+  const messages: Msg[] = aiMsg
+    ? [
+        { text: aiMsg.message, isAi: true, time: new Date(aiMsg.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) },
+        ...staticMessages.slice(1).map(t => ({ text: t, isAi: false })),
+      ]
+    : staticMessages.map(t => ({ text: t, isAi: false }));
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
@@ -68,14 +84,19 @@ export default function ChatConversation() {
       <div className="flex-1 px-4 py-4 flex flex-col gap-3 overflow-y-auto">
         <p className="text-xs text-gray-400 text-center my-2">{event.date || 'Upcoming event'}</p>
 
-        {messages.map((text, i) => (
-          <div key={i} className="flex items-end gap-2 max-w-[80%]">
-            <div className={`w-7 h-7 rounded-full ${avatarColor} flex-shrink-0 flex items-center justify-center text-white text-xs font-bold`}>
-              {event.title.charAt(0).toUpperCase()}
+        {messages.map((msg, i) => (
+          <div key={i} className="flex flex-col gap-0.5">
+            <div className="flex items-end gap-2 max-w-[80%]">
+              <div className={`w-7 h-7 rounded-full ${avatarColor} flex-shrink-0 flex items-center justify-center text-white text-xs font-bold`}>
+                {event.title.charAt(0).toUpperCase()}
+              </div>
+              <div className={`rounded-2xl rounded-bl-sm px-4 py-2.5 ${msg.isAi ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-100'}`}>
+                <p className={`text-sm ${msg.isAi ? 'text-indigo-900' : 'text-gray-800'}`}>{msg.text}</p>
+              </div>
             </div>
-            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
-              <p className="text-sm text-gray-800">{text}</p>
-            </div>
+            {msg.time && (
+              <p className="text-xs text-gray-400 ml-9">{msg.time}</p>
+            )}
           </div>
         ))}
       </div>
