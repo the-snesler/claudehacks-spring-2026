@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import eventsData from "../../data/mscr_events.json";
+import { loadAllEvents } from "../models/loadEvents";
 
 export default function Saved() {
   const [savedIds, setSavedIds] = useState<number[]>([]);
@@ -12,7 +12,7 @@ export default function Saved() {
     }
   }, []);
 
-  const saved = eventsData.events.filter((e) => savedIds.includes(e.id));
+  const saved = loadAllEvents().filter((e) => savedIds.includes(e.id as any));
 
   function remove(id: number) {
     const next = savedIds.filter((s) => s !== id);
