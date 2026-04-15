@@ -17,7 +17,11 @@ export default function EventsPage() {
   const { events } = useLoaderData<typeof loader>();
   const [stack, setStack] = useState<Event[]>(events);
 
-  const handleSwipe = useCallback((id: string, _dir: SwipeDirection) => {
+  const handleSwipe = useCallback((id: string, dir: SwipeDirection) => {
+    if (dir === 'save') {
+      const saved: string[] = JSON.parse(localStorage.getItem("saved_events") || "[]");
+      if (!saved.includes(id)) localStorage.setItem("saved_events", JSON.stringify([...saved, id]));
+    }
     setStack(prev => prev.filter(e => e.id !== id));
   }, []);
 
