@@ -5,6 +5,5 @@
   "main": "./workers/app.ts",
   "vars": {
     "VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
-  },
-  "secrets": ["ANTHROPIC_API_KEY"]
+  }
 }

@@ -1,19 +1,22 @@
-# Plan: Tinder-Style Events + Chat UI (ethan branch)
+# Plan: Standalone Chat System
 
-## Tasks
+## Goal
+A self-contained chat module that can be dropped into any React Router + Cloudflare Workers frontend.
+Import `<ChatWidget />` and a server action, done.
 
-- [x] 1. Add `/chat` and `/saved` routes to `routes.ts`
-- [x] 2. Replace `home.tsx` with swipe page (drag + buttons, stack effect, localStorage saves)
-- [x] 3. Create `routes/chat.tsx` — chat UI with Claude API action
-- [x] 4. Add nav bar to `root.tsx` (Discover / Saved / Chat)
-- [x] 5. Create `routes/saved.tsx` — saved events grid with remove button
-- [x] 6. Wire up Claude API (ANTHROPIC_API_KEY secret in wrangler.jsonc, typed in workers/app.ts)
-- [x] 7. Delete boilerplate (welcome.tsx, logos)
+## Files to create
+- `frontend/app/chat/types.ts` — shared Message and Event types
+- `frontend/app/chat/useChat.ts` — hook managing messages, streaming, tool calls
+- `frontend/app/chat/EventCard.tsx` — small inline event card rendered inside chat
+- `frontend/app/chat/ChatWidget.tsx` — full UI component (thread + input), accepts `events` prop
+- `frontend/app/chat/action.server.ts` — server action: streaming Anthropic API + tool use
 
-## Review
+## Features
+1. **Streaming** — responses stream word by word via ReadableStream (no waiting for full reply)
+2. **Tool use** — Claude can call `search_events(query)` to find and surface matching events inline as cards inside the chat
+3. **Clean export** — `ChatWidget` takes `events` as a prop, action takes `ANTHROPIC_API_KEY` from env
 
-- 5 files changed/created, 3 deleted
-- Swipe page: drag left/right or use buttons, SAVE/SKIP labels appear mid-drag, stack card behind current
-- Saved page: reads localStorage, shows event cards, remove button per card, register link
-- Chat: server-side Claude action, knows all events + user's saved events, message thread UI
-- To deploy: run `wrangler secret put ANTHROPIC_API_KEY` then `pnpm run deploy` from `/frontend`
+## Notes
+- Keep each file small and focused
+- No extra dependencies beyond what's already installed
+- Streaming via fetch + ReadableStream on the server, consumed with a reader on the client

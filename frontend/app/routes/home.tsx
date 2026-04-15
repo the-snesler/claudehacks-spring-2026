@@ -19,6 +19,7 @@ export default function Home() {
   const [index, setIndex] = useState(0);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [flash, setFlash] = useState<"save" | "skip" | null>(null);
   const startX = useRef(0);
   const events = eventsData.events;
   const current = events[index];
@@ -28,13 +29,15 @@ export default function Home() {
     if (current && !saved.includes(current.id)) {
       setSaved([...saved, current.id]);
     }
-    setIndex((i) => i + 1);
+    setFlash("save");
     setOffset(0);
+    setTimeout(() => { setFlash(null); setIndex((i) => i + 1); }, 350);
   }
 
   function skip() {
-    setIndex((i) => i + 1);
+    setFlash("skip");
     setOffset(0);
+    setTimeout(() => { setFlash(null); setIndex((i) => i + 1); }, 350);
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -76,7 +79,7 @@ export default function Home() {
 
         {/* Main card */}
         <div
-          className="relative z-10 bg-white border border-gray-200 rounded-2xl p-6 shadow-lg cursor-grab active:cursor-grabbing"
+          className={`relative z-10 bg-white rounded-2xl p-6 shadow-lg cursor-grab active:cursor-grabbing border-4 transition-colors ${flash === "save" ? "border-green-500 bg-green-50" : flash === "skip" ? "border-red-500 bg-red-50" : "border-gray-200"}`}
           style={{
             transform: `translateX(${offset}px) rotate(${rotation}deg)`,
             transition: dragging ? "none" : "transform 0.3s ease",
@@ -86,6 +89,16 @@ export default function Home() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
         >
+          {flash && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 z-20">
+              <span
+                className={`text-7xl ${flash === "save" ? "text-green-500" : "text-red-400"}`}
+                style={{ animation: "flashOut 0.35s ease-out forwards" }}
+              >
+                {flash === "save" ? "✓" : "✕"}
+              </span>
+            </div>
+          )}
           {offset > 30 && (
             <div className="absolute top-4 left-4 border-2 border-green-500 text-green-500 font-bold text-lg px-2 py-1 rounded rotate-[-15deg]">
               SAVE
@@ -123,13 +136,13 @@ export default function Home() {
       <div className="flex gap-6 mt-8">
         <button
           onClick={skip}
-          className="w-14 h-14 rounded-full border-2 border-red-300 text-red-400 text-2xl flex items-center justify-center hover:bg-red-50 transition"
+          className={`w-14 h-14 rounded-full border-2 text-2xl flex items-center justify-center transition ${flash === "skip" ? "border-red-500 bg-red-500 text-white" : "border-red-300 text-red-400 hover:bg-red-50"}`}
         >
           ✕
         </button>
         <button
           onClick={save}
-          className="w-14 h-14 rounded-full border-2 border-green-400 text-green-500 text-2xl flex items-center justify-center hover:bg-green-50 transition"
+          className={`w-14 h-14 rounded-full border-2 text-2xl flex items-center justify-center transition ${flash === "save" ? "border-green-500 bg-green-500 text-white" : "border-green-400 text-green-500 hover:bg-green-50"}`}
         >
           ♥
         </button>
