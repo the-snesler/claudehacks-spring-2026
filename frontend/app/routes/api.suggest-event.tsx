@@ -10,7 +10,7 @@ const SuggestionSchema = z.object({
 });
 
 export async function action({ request, context }: Route.ActionArgs) {
-  const apiKey = context.cloudflare.env.ANTHROPIC_API_KEY;
+  const apiKey = (context.cloudflare.env as { ANTHROPIC_API_KEY: string }).ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json({ error: 'Missing API key' }, { status: 500 });
   }

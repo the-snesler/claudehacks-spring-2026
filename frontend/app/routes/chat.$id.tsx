@@ -1,8 +1,9 @@
 import { useLoaderData, useNavigate } from 'react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Route } from './+types/chat.$id';
 import { loadAllEvents } from '../models/loadEvents';
-import { getAiMessageForEvent, type AiMessage } from '../models/aiMessages';
+import { getAiMessageForEvent } from '../models/aiMessages';
+import type { Event } from '../models/event';
 
 export function meta({ data }: Route.MetaArgs) {
   return [{ title: data?.event ? `${data.event.title} — Chat` : 'Chat' }];
@@ -20,14 +21,36 @@ const SOURCE_COLORS: Record<string, string> = {
   Isthmus: 'bg-emerald-600',
 };
 
+type Message = { role: 'event' | 'user'; text: string };
+
+function buildInitialMessages(event: Event): Message[] {
+  const aiMsg = getAiMessageForEvent(event.id);
+  const opener = aiMsg?.message ?? `Hey! We'd love to see you at ${event.title}.`;
+  const followUp = event.location
+    ? `We're at ${event.location}${event.date ? ` on ${event.date}` : ''}.`
+    : event.date
+      ? `Mark your calendar — we're on ${event.date}!`
+      : 'Check our page for the latest details.';
+  return [
+    { role: 'event', text: opener },
+    { role: 'event', text: followUp },
+  ];
+}
+
 export default function ChatConversation() {
   const { event } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const [aiMsg, setAiMsg] = useState<AiMessage | undefined>(undefined);
+  const [messages, setMessages] = useState<Message[]>(() =>
+    event ? buildInitialMessages(event) : []
+  );
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (event) setAiMsg(getAiMessageForEvent(event.id));
-  }, [event?.id]);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   if (!event) {
     return (
@@ -39,29 +62,50 @@ export default function ChatConversation() {
 
   const avatarColor = SOURCE_COLORS[event.source] ?? 'bg-gray-400';
 
-  // Build message list: AI message first (if any), then static fallback messages
-  const staticMessages = [
-    `Hey! We'd love to see you at ${event.title}.`,
-    event.location
-      ? `We're at ${event.location}${event.date ? ` on ${event.date}` : ''}.`
-      : event.date
-        ? `Mark your calendar — we're happening on ${event.date}!`
-        : 'Check our page for the latest details.',
-    'Any questions? Just reply here and we\'ll get back to you!',
-  ];
+  async function sendMessage() {
+    const text = input.trim();
+    if (!text || sending) return;
 
-  type Msg = { text: string; isAi: boolean; time?: string };
-  const messages: Msg[] = aiMsg
-    ? [
-        { text: aiMsg.message, isAi: true, time: new Date(aiMsg.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) },
-        ...staticMessages.slice(1).map(t => ({ text: t, isAi: false })),
-      ]
-    : staticMessages.map(t => ({ text: t, isAi: false }));
+    const userMsg: Message = { role: 'user', text };
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
+    setInput('');
+    setSending(true);
+
+    try {
+      // Build Anthropic-format history from all messages
+      const history = nextMessages.map(m => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      })) as { role: 'user' | 'assistant'; content: string }[];
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event, history }),
+      });
+
+      if (res.ok) {
+        const { text: replyText } = await res.json() as { text: string };
+        setMessages(prev => [...prev, { role: 'event', text: replyText }]);
+      }
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
         <button
           onClick={() => navigate('/chat')}
           aria-label="Back"
@@ -82,37 +126,60 @@ export default function ChatConversation() {
 
       {/* Messages */}
       <div className="flex-1 px-4 py-4 flex flex-col gap-3 overflow-y-auto">
-        <p className="text-xs text-gray-400 text-center my-2">{event.date || 'Upcoming event'}</p>
+        <p className="text-xs text-gray-400 text-center mb-2">{event.date || 'Upcoming event'}</p>
 
-        {messages.map((msg, i) => (
-          <div key={i} className="flex flex-col gap-0.5">
-            <div className="flex items-end gap-2 max-w-[80%]">
+        {messages.map((msg, i) =>
+          msg.role === 'event' ? (
+            <div key={i} className="flex items-end gap-2 max-w-[80%]">
               <div className={`w-7 h-7 rounded-full ${avatarColor} flex-shrink-0 flex items-center justify-center text-white text-xs font-bold`}>
                 {event.title.charAt(0).toUpperCase()}
               </div>
-              <div className={`rounded-2xl rounded-bl-sm px-4 py-2.5 ${msg.isAi ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-100'}`}>
-                <p className={`text-sm ${msg.isAi ? 'text-indigo-900' : 'text-gray-800'}`}>{msg.text}</p>
+              <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
+                <p className="text-sm text-gray-800">{msg.text}</p>
               </div>
             </div>
-            {msg.time && (
-              <p className="text-xs text-gray-400 ml-9">{msg.time}</p>
-            )}
+          ) : (
+            <div key={i} className="flex justify-end">
+              <div className="bg-indigo-500 rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[80%]">
+                <p className="text-sm text-white">{msg.text}</p>
+              </div>
+            </div>
+          )
+        )}
+
+        {sending && (
+          <div className="flex items-end gap-2 max-w-[80%]">
+            <div className={`w-7 h-7 rounded-full ${avatarColor} flex-shrink-0 flex items-center justify-center text-white text-xs font-bold`}>
+              {event.title.charAt(0).toUpperCase()}
+            </div>
+            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1 items-center">
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+            </div>
           </div>
-        ))}
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
       {/* Input bar */}
-      <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center gap-2">
+      <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center gap-2 flex-shrink-0">
         <input
+          ref={inputRef}
           type="text"
           placeholder="Message..."
-          readOnly
-          className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={sending}
+          className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none disabled:opacity-50"
         />
         <button
-          disabled
+          onClick={sendMessage}
+          disabled={!input.trim() || sending}
           aria-label="Send"
-          className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white opacity-40 cursor-not-allowed"
+          className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />

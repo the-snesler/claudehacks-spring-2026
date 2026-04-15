@@ -78,7 +78,8 @@ export default function SwipeCard({ event, onSwipe, style }: SwipeCardProps) {
           <img
             src={event.imageUrl || fallbackImage}
             alt={event.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover pointer-events-none"
+            draggable={false}
           />
 
           {/* Source badge */}
