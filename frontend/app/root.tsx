@@ -13,7 +13,6 @@ import BottomNav from "./components/BottomNav";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-  { rel: "apple-touch-icon", href: "/appIcon.png" },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
@@ -38,7 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
-        <meta name="apple-mobile-web-app-title" content="Bike Benefits" />
+        <meta name="apple-mobile-web-app-title" content="Madison Events" />
         <Meta />
         <Links />
       </head>

@@ -1,10 +1,5 @@
-import { redirect } from "react-router";
-import type { Route } from "./+types/home";
-
-export function loader(_: Route.LoaderArgs) {
-  return redirect("/events");
-}
+import { Navigate } from "react-router";
 
 export default function Home() {
-  return null;
+  return <Navigate to="/events" replace />;
 }
