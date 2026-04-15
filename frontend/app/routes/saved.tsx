@@ -50,29 +50,29 @@ export default function Saved() {
           Clear all
         </button>
       </div>
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
         {saved.map((event) => {
           const img = event.imageUrl || FALLBACK_IMAGES[event.title.length % 3];
           const dotColor = SOURCE_COLORS[event.source] ?? 'bg-gray-400';
           return (
-            <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex">
-              <img src={img} alt={event.title} className="w-24 h-24 object-cover flex-shrink-0" />
-              <div className="flex-1 p-3 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">{event.title}</p>
-                  <button onClick={() => remove(event.id)} className="w-7 h-7 rounded-full bg-red-100 hover:bg-red-200 text-red-500 flex items-center justify-center flex-shrink-0 transition-colors">
-                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                {event.date && <p className="text-xs text-gray-400 mt-1">{event.date}{event.time ? ` · ${event.time}` : ''}</p>}
+            <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+              <div className="relative">
+                <img src={img} alt={event.title} className="w-full h-28 object-cover" />
+                <button onClick={() => remove(event.id)} className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-2.5 flex flex-col gap-1">
+                <p className="font-semibold text-gray-900 text-xs leading-snug line-clamp-2">{event.title}</p>
+                {event.date && <p className="text-xs text-gray-400">{event.date}</p>}
                 {event.location && <p className="text-xs text-gray-400 truncate">{event.location}</p>}
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-xs text-white ${dotColor} px-2 py-0.5 rounded-full`}>{event.source}</span>
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  <span className={`text-xs text-white ${dotColor} px-1.5 py-0.5 rounded-full`}>{event.source}</span>
                   {event.isFree
-                    ? <span className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Free</span>
-                    : event.fee ? <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">${event.fee}</span> : null}
+                    ? <span className="text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">Free</span>
+                    : event.fee ? <span className="text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full">${event.fee}</span> : null}
                 </div>
               </div>
             </div>
